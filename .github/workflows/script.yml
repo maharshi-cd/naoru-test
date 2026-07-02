@@ -1,4 +1,4 @@
-name: CI-SCRIPT
+name: CI-SCRIPT-Bash
 
 on:
   pull_request:
