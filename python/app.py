@@ -2,8 +2,9 @@
 
 
 def main():
+    environment = "staging"
     print("starting deploy")
-    # BUG: 'environment' is never defined -> NameError at runtime
+    # 'environment' is now defined locally
     print(f"deploying to {environment}")
 
 
