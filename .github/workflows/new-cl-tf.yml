@@ -20,6 +20,9 @@ jobs:
       - name: Terraform validate
         run: terraform validate 
 
+      -name: Terraform plan
+        run: terraform plan
+
   naoru:
       needs: [build]   # your failing job
       if: ${{ always() && needs.build.result == 'failure' }}
