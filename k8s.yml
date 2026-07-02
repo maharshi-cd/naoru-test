@@ -3,4 +3,15 @@ kind: Deployment
 metadata:
   name: test-app
 spec:
-  replicas: "two"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      labels:
+        app: test-app
+    spec:
+      containers:
+        - name: test-container
+          image: nginx
