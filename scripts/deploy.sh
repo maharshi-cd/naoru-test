@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 set -euo pipefail
-echo "Deploying to ${ENVIRONMENT:-staging}"
+echo "Deploying to ${LOCATION}..."

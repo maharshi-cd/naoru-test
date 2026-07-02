@@ -30,4 +30,4 @@ jobs:
           provider: openrouter
           model: deepseek/deepseek-v4-flash
           failed-job-name: build
-          fix-mode: suggest
+          fix-mode: pr
