@@ -20,7 +20,7 @@ jobs:
     if: ${{ always() && needs.build.result == 'failure' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
       actions: read
     steps:
@@ -30,4 +30,4 @@ jobs:
           provider: openrouter
           model: deepseek/deepseek-v4-flash
           failed-job-name: build
-          fix-mode: suggest
+          fix-mode: pr
