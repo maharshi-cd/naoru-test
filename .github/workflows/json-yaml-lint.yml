@@ -1,16 +1,15 @@
-name: CI-SCRIPT-Bash
+name: CI-yaml-json-lint
 
 on:
-  # pull_request:
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Run deploy script
-        run: bash scripts/deploy.sh
+      - name: Build Docker image
+        run: docker build -t naoru-test .
 
   naoru:
     needs: [build]
