@@ -33,6 +33,7 @@ jobs:
       - uses: clouddrove/naoru@v0
         with:
           api-key: ${{ secrets.GROQ_API_KEY }}
-          provider: groq
+          provider: openrouter
+          model: qwen/qwen3-coder
           failed-job-name: build
           fix-mode: suggest
