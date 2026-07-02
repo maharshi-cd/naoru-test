@@ -3,5 +3,5 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-COPY missing-file.txt /app/
+COPY missing-new-file.txt /app/
 CMD ["node", "app.js"]

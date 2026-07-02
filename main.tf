@@ -42,5 +42,5 @@ output "rg-name" {
 }
 
 output "rg-location" {
-  value = {for k,  v in azurerm_resource_group.test-rg : k => v.default}
+  value = {for k,  v in azurerm_resource_group.test-rg : k => v.ok}
 }
