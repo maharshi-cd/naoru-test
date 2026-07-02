@@ -3,12 +3,9 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  vars:
+    app_version: "1.0.0"
+    deploy_env: "staging"
   tasks:
     - name: Print deploy target
       ansible.builtin.debug:
-        msg: "Deploying version {{ app_version }} to {{ deploy_env }}"
-
-    - name: Create release marker
-      ansible.builtin.copy:
-        content: "release {{ app_version }}"
-        dest: /tmp/release.txt
