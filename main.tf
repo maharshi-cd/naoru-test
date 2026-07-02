@@ -7,7 +7,7 @@ output "broken" {
 }
 
 locals {
-  missing_value = var.values + "abc"
+  missing_value = var.values + 1
 }
 
 variable "values" {
