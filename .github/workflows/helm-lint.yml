@@ -31,4 +31,4 @@ jobs:
           provider: openrouter
           model: minimax/minimax-m3
           failed-job-name: build
-          fix-mode: suggest
+          fix-mode: pr
