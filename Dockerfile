@@ -4,4 +4,4 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 COPY missing-new-file.txt /app/
-CMD ["node", "app.js"]
+CMD ["node", "app.js"]  
