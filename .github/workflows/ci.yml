@@ -1,8 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
 
 jobs:
@@ -10,10 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Failing build step
-        run: |
-          echo "Simulating build failure"
-          node -e "throw new Error('Test failure for naoru')"
+      - name: Run broken app
+        run: node app.js
 
   naoru:
     needs: [build]
@@ -28,3 +24,4 @@ jobs:
         with:
           api-key: ${{ secrets.GROQ_API_KEY }}
           provider: groq
+          failed-job-name: build
