@@ -27,4 +27,4 @@ jobs:
           provider: openrouter
           model: qwen/qwen3-coder
           failed-job-name: build
-          fix-mode: suggest
+          fix-mode: pr
