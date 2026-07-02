@@ -1,19 +1,23 @@
-name: CI-Node
+name: CI-TF
 
 on:
-  # pull_request:
-  workflow_dispatch:
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - uses: hashicorp/setup-terraform@v3
         with:
-          node-version: 20
-      - run: npm ci
-      - run: npm run build
+          terraform_version: 1.9.8
+
+      - name: Terraform init
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate
 
   naoru:
     needs: [build]
