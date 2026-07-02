@@ -1,4 +1,4 @@
-name: CI-Node
+name: CI-Ansible
 
 on:
   pull_request:
@@ -9,11 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm ci
-      - run: npm run build
+      - name: Install ansible
+        run: pipx install ansible-core
+      - name: Run playbook
+        run: ansible-playbook -i localhost, ansible/playbook.yml
 
   naoru:
     needs: [build]

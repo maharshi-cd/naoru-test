@@ -30,3 +30,4 @@ jobs:
           api-key: ${{ secrets.GROQ_API_KEY }}
           provider: groq
           failed-job-name: build
+          fix-mode: suggest

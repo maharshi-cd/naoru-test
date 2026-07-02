@@ -1,4 +1,4 @@
-name: CI-Node
+name: CI-Python
 
 on:
   pull_request:
@@ -9,11 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-python@v5
         with:
-          node-version: 20
-      - run: npm ci
-      - run: npm run build
+          python-version: '3.12'
+      - name: Run app
+        run: python python/app.py
 
   naoru:
     needs: [build]

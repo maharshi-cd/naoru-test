@@ -1,13 +1,14 @@
 name: CI-Docker
 
 on:
-  # pull_request:
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Build Docker image
         run: docker build -t naoru-test .
 
@@ -25,3 +26,4 @@ jobs:
           api-key: ${{ secrets.GROQ_API_KEY }}
           provider: groq
           failed-job-name: build
+          fix-mode: suggest

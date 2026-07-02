@@ -1,7 +1,7 @@
 name: CI-SCRIPT-Bash
 
 on:
-  # pull_request:
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -26,3 +26,4 @@ jobs:
           api-key: ${{ secrets.GROQ_API_KEY }}
           provider: groq
           failed-job-name: build
+          fix-mode: suggest
