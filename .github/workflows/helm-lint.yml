@@ -1,7 +1,7 @@
-name: CI-yaml-json-lint
+name: CI-helm-lint
 
 on:
-  # pull_request:
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -10,16 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq yamllint
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
 
-      - name: Validate JSON
-        run: jq empty json-yaml/config.json
-
-      - name: Validate YAML
-        run: yamllint json-yaml/config.yml
+      - name: Helm lint
+        run: helm lint ./chart
 
   naoru:
     needs: [build]

@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: naoru-test
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: naoru-test
+  template:
+    metadata:
+      labels:
+        app: naoru-test
+    spec:
+      containers:
+        - name: naoru-test
+          image: "{{ required "image.repository is required" .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.service.port }}
