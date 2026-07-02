@@ -1,15 +1,15 @@
-name: CI-Docker
+name: CI-TF
 
 on:
-  # pull_request:
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Build Docker image
-        run: docker build -t naoru-test .
+      - name: Run deploy script
+        run: bash scripts/deploy.sh
 
   naoru:
     needs: [build]
