@@ -3,7 +3,6 @@ package main
 import "fmt"
 
 func main() {
-	// BUG: getVersion is never defined -> compile error
-	version := getVersion()
+	version := "1.0.0"
 	fmt.Println("version:", version)
 }
