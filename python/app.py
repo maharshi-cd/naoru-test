@@ -1,5 +1,7 @@
 """Tiny deploy helper."""
 
+import os
+
 
 def main():
     print("starting deploy")
