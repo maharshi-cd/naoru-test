@@ -1,4 +1,4 @@
-name: CI-helm-lint
+name: NEW TAG CI TERRAFORM
 
 on:
   pull_request:
@@ -10,18 +10,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Helm
-        uses: azure/setup-helm@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
 
-      - name: Render Helm chart
-        run: helm template test ./chart
+      - name: Terraform init
+        run: terraform init -backend=false
 
-  naoru:
-    needs: [build]
+      - name: Terraform validate
+        run: terraform validate
+
+      
+
+naoru:
+    needs: [build]   # your failing job
     if: ${{ always() && needs.build.result == 'failure' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write        # only for fix-mode: pr
       pull-requests: write
       actions: read
     steps:
@@ -29,4 +35,5 @@ jobs:
         with:
           api-key: ${{ secrets.GROQ_API_KEY }}
           provider: openrouter
-          failed-job-name: build
+          fix-mode: pr   # or: pr
+

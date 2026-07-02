@@ -1,7 +1,7 @@
 name: CI-TF
 
 on:
-  # pull_request:
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -32,5 +32,5 @@ jobs:
       - uses: clouddrove/naoru@v0
         with:
           api-key: ${{ secrets.GROQ_API_KEY }}
-          provider: groq
+          provider: openrouter
           failed-job-name: build
