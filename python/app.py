@@ -1,9 +1,11 @@
 """Tiny deploy helper."""
 
+import os
+
 
 def main():
     print("starting deploy")
-    # BUG: 'environment' is never defined -> NameError at runtime
+    environment = os.environ.get("ENVIRONMENT", "unknown")
     print(f"deploying to {environment}")
 
 
