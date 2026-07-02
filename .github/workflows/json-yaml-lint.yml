@@ -34,4 +34,6 @@ jobs:
         with:
           api-key: ${{ secrets.GROQ_API_KEY }}
           provider: openrouter
+          model: qwen/qwen3-coder
           failed-job-name: build
+          fix-mode: suggest

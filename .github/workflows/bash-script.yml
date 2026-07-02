@@ -25,4 +25,6 @@ jobs:
         with:
           api-key: ${{ secrets.GROQ_API_KEY }}
           provider: openrouter
+          model: minimax/minimax-m3
           failed-job-name: build
+          fix-mode: suggest

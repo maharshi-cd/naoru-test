@@ -33,4 +33,6 @@ jobs:
         with:
           api-key: ${{ secrets.GROQ_API_KEY }}
           provider: openrouter
+          model: deepseek/deepseek-v4-flash
           failed-job-name: build
+          fix-mode: suggest

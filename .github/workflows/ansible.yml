@@ -1,4 +1,4 @@
-name: CI-Docker
+name: CI-Ansible
 
 on:
   pull_request:
@@ -9,8 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker image
-        run: docker build -t naoru-test .
+      - name: Install ansible
+        run: pipx install ansible-core
+      - name: Run playbook
+        run: ansible-playbook -i localhost, ansible/playbook.yml
 
   naoru:
     needs: [build]
@@ -25,6 +27,6 @@ jobs:
         with:
           api-key: ${{ secrets.GROQ_API_KEY }}
           provider: openrouter
-          model: qwen/qwen3-coder
+          model: deepseek/deepseek-v4-flash
           failed-job-name: build
           fix-mode: suggest
