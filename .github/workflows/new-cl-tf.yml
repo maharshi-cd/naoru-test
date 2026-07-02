@@ -18,22 +18,20 @@ jobs:
         run: terraform init -backend=false
 
       - name: Terraform validate
-        run: terraform validate
+        run: terraform validate 
 
-      
-
-naoru:
-    needs: [build]   # your failing job
-    if: ${{ always() && needs.build.result == 'failure' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write        # only for fix-mode: pr
-      pull-requests: write
-      actions: read
-    steps:
-      - uses: clouddrove/naoru@v0
-        with:
-          api-key: ${{ secrets.GROQ_API_KEY }}
-          provider: openrouter
-          fix-mode: pr   # or: pr
+  naoru:
+      needs: [build]   # your failing job
+      if: ${{ always() && needs.build.result == 'failure' }}
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write        # only for fix-mode: pr
+        pull-requests: write
+        actions: read
+      steps:
+        - uses: clouddrove/naoru@v0
+          with:
+            api-key: ${{ secrets.GROQ_API_KEY }}
+            provider: openrouter
+            fix-mode: pr   # or: pr
 
