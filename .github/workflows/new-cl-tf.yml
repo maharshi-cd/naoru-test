@@ -1,4 +1,4 @@
-name: NEW TAG CI TERRAFORM
+name: NEW-CI TERRAFORM
 
 on:
   pull_request:
