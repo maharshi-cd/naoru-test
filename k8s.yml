@@ -11,4 +11,7 @@ spec:
     metadata:
       labels:
         app: test-app
-    spec: {}
+    spec:
+      containers:
+        - name: test-container
+          image: nginx:latest
