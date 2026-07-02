@@ -3,7 +3,7 @@
 
 def main():
     print("starting deploy")
-    # BUG: 'environment' is never defined -> NameError at runtime
+    environment = "staging"
     print(f"deploying to {environment}")
 
 
