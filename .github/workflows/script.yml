@@ -1,4 +1,4 @@
-name: CI-TF
+name: CI-SCRIPT
 
 on:
   pull_request:
