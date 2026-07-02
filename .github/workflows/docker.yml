@@ -1,24 +1,15 @@
-name: CI-TF
+name: CI-Docker
 
 on:
-  # pull_request:
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.8
-
-      - name: Terraform init
-        run: terraform init -backend=false
-
-      - name: Terraform validate
-        run: terraform validate
+      - name: Build Docker image
+        run: docker build -t naoru-test .
 
   naoru:
     needs: [build]
