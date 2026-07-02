@@ -1,0 +1,40 @@
+name: NEW TAG CI TERRAFORM
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform init
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate 
+
+      - name: Terraform plan
+        run: terraform plan
+
+  naoru:
+      needs: [build]   # your failing job
+      if: ${{ always() && needs.build.result == 'failure' }}
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write        # only for fix-mode: pr
+        pull-requests: write
+        actions: read
+      steps:
+        - uses: clouddrove/naoru@v0
+          with:
+            api-key: ${{ secrets.GROQ_API_KEY }}
+            provider: openrouter
+            fix-mode: pr   # or: pr
+
