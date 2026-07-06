@@ -1,0 +1,32 @@
+name: CI-Ansible
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ansible
+        run: pipx install ansible-core
+      - name: Run playbook
+        run: ansible-playbook -i localhost, ansible/playbook.yml
+
+  naoru:
+    needs: [build]
+    if: ${{ always() && needs.build.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: clouddrove/naoru@v0
+        with:
+          api-key: ${{ secrets.GROQ_API_KEY }}
+          provider: openrouter
+          model: deepseek/deepseek-v4-flash
+          failed-job-name: build
+          fix-mode: pr

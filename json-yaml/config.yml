@@ -1,0 +1,6 @@
+name: naoru
+enabled: true
+ports:
+ - 80
+  - 443
+  - new
