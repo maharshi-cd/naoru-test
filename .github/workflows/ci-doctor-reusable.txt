@@ -1,3 +1,4 @@
+---
 name: PR Naoru CI Doctor
 
 on:
@@ -23,44 +24,28 @@ on:
         required: false
         type: string
         default: |
-          You are a senior DevOps engineer diagnosing a failed CI job.
+          You are a senior DevOps engineer. A CI job just failed.
 
           Job: {{JOB_NAME}}
           Repository: {{REPO}}
 
-          Failed job logs:
+          Here are the tailed logs from the failed job:
+
           {{LOG}}
 
-          Return GitHub-flavored Markdown only in exactly this format:
-
-          ### Root cause
-          1-2 short sentences explaining the most likely failure.
-
-          ### Suggested fix
-          - Give 2-4 concrete actions.
-          - Keep them practical and specific.
-
-          ### Example patch
-          Provide a short fenced code block only if a code/config fix is obvious.
-          Otherwise write: Not applicable.
-
-          Confidence: High|Medium|Low
-
-          Rules:
-          - Keep total output under 220 words.
-          - Do not wrap the whole answer in triple backticks.
-          - Do not include JSON.
-          - Do not repeat the full logs.
+          Diagnose the most likely root cause in 1-2 sentences, then give a
+          specific suggested fix. Keep the whole response under 200 words.
+          End with a single line: "Confidence: High|Medium|Low".
       max-log-lines:
         description: "Tail this many lines from the failed job log."
         required: false
         type: number
-        default: 200
+        default: 500
       max-tokens:
         description: "Response token cap for the LLM request."
         required: false
         type: number
-        default: 500
+        default: 600
       failed-job-name:
         description: "Failed job name to diagnose. If blank, the first failed job is used."
         required: false
@@ -91,7 +76,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       diagnosis: ${{ steps.call-llm.outputs.diagnosis }}
-
     steps:
       - name: Fetch failed job logs
         id: logs
@@ -106,7 +90,6 @@ jobs:
 
           jobs_json="$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100")"
           job_id=""
-          job_name=""
 
           if [ -n "$FAILED_JOB_NAME" ]; then
             name_lc="$(printf '%s' "$FAILED_JOB_NAME" | tr '[:upper:]' '[:lower:]')"
@@ -125,25 +108,14 @@ jobs:
             )"
           fi
 
-          if [ -n "$job_id" ]; then
-            job_name="$(
-              printf '%s' "$jobs_json" |
-                jq -r --arg id "$job_id" '.jobs[] | select((.id|tostring) == $id) | .name' |
-                head -n 1
-            )"
-          fi
-
           if [ -z "$job_id" ]; then
             echo "(no failed job found in this workflow run)" > raw.log
-            echo "job_name=unknown" >> "$GITHUB_OUTPUT"
           else
             gh api "repos/$REPO/actions/jobs/$job_id/logs" > raw.log
-            echo "job_name=$job_name" >> "$GITHUB_OUTPUT"
           fi
 
           tail -n "$MAX_LOG_LINES" raw.log > tailed.log
-          sed -E 's/\x1b\[[0-9;]*[mK]//g' tailed.log > tailed-clean.log
-          echo "Captured $(wc -l < tailed-clean.log) log lines"
+          echo "Captured $(wc -l < tailed.log) log lines"
 
       - name: Call LLM
         id: call-llm
@@ -154,13 +126,12 @@ jobs:
           CID_API_KEY: ${{ secrets.API_KEY }}
           CID_MAX_TOKENS: ${{ inputs.max-tokens }}
           CID_PROMPT_TEMPLATE: ${{ inputs.prompt }}
-          CID_JOB_NAME: ${{ steps.logs.outputs.job_name || inputs.failed-job-name || github.job }}
+          CID_JOB_NAME: ${{ inputs.failed-job-name || github.job }}
           CID_REPO: ${{ github.repository }}
         run: |
           python3 - <<'PYEOF'
           import json
           import os
-          import re
           import sys
           import urllib.error
           import urllib.request
@@ -169,13 +140,13 @@ jobs:
           model = os.environ.get("CID_MODEL", "").strip()
           base_url = os.environ.get("CID_BASE_URL", "").strip()
           api_key = os.environ.get("CID_API_KEY", "").strip()
-          max_tokens = int(os.environ.get("CID_MAX_TOKENS", "500"))
+          max_tokens = int(os.environ.get("CID_MAX_TOKENS", "600"))
 
           if not api_key:
               print(f"::error::No API key received for provider '{provider}'.")
               sys.exit(1)
 
-          with open("tailed-clean.log", "r", errors="replace") as log_file:
+          with open("tailed.log", "r", errors="replace") as log_file:
               log = log_file.read()[-12000:]
 
           prompt = (
@@ -259,11 +230,8 @@ jobs:
               print(f"::error::Could not parse {provider} response: {json.dumps(data)[:500]}")
               sys.exit(1)
 
-          text = text.strip()
-          text = re.sub(r'\n{3,}', '\n\n', text)
-
           with open("diagnosis.md", "w") as diagnosis_file:
-              diagnosis_file.write(text + "\n")
+              diagnosis_file.write(text)
 
           delim = "EOF_NAORU_DIAGNOSIS"
           with open(os.environ["GITHUB_OUTPUT"], "a") as gh_out:
@@ -278,30 +246,17 @@ jobs:
           PROVIDER: ${{ inputs.provider }}
           MODEL: ${{ inputs.model }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          FAILED_JOB_NAME: ${{ steps.logs.outputs.job_name || inputs.failed-job-name || 'unknown' }}
         run: |
-          cat > comment.md <<EOF
-          <!-- pr-naoru-ci-doctor -->
-          ## Naoru CI Doctor
-
-          | Field | Value |
-          |---|---|
-          | Job | \`$FAILED_JOB_NAME\` |
-          | Provider | \`$PROVIDER\` |
-          | Model | \`$MODEL\` |
-          | Run | [Open workflow run]($RUN_URL) |
-
-          $(cat diagnosis.md)
-
-          <details>
-          <summary>Log tail used for diagnosis</summary>
-
-          \`\`\`text
-          $(cat tailed-clean.log | tail -n 80)
-          \`\`\`
-
-          </details>
-          EOF
+          {
+            echo "<!-- pr-naoru-ci-doctor -->"
+            echo "## Naoru CI Doctor"
+            echo
+            echo "**Provider:** \`$PROVIDER\`"
+            echo "**Model:** \`$MODEL\`"
+            echo "**Run:** $RUN_URL"
+            echo
+            cat diagnosis.md
+          } > comment.md
 
       - name: Post sticky PR comment
         if: ${{ inputs.post-comment && github.event.pull_request.number }}
@@ -322,19 +277,14 @@ jobs:
             )"
           fi
 
-          payload="$(jq -Rs '{body: .}' < comment.md)"
-
+          body="$(cat comment.md)"
           if [ -n "$existing_id" ]; then
-            gh api \
-              -X PATCH \
-              "repos/$REPO/issues/comments/$existing_id" \
-              --input - <<<"$payload"
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing_id" -f body="$body"
           else
-            gh api \
-              "repos/$REPO/issues/$PR_NUMBER/comments" \
-              --input - <<<"$payload"
+            gh api "repos/$REPO/issues/$PR_NUMBER/comments" -f body="$body"
           fi
 
       - name: Write to Step Summary
         if: ${{ !github.event.pull_request.number }}
         run: cat comment.md >> "$GITHUB_STEP_SUMMARY"
+...
