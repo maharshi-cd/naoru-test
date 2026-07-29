@@ -2,8 +2,8 @@ name: naoru-ci-doctor-multitool-test
 
 on:
   workflow_dispatch: {}
-  # pull_request:
-  #   branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   terraform-check:
