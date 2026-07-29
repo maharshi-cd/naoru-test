@@ -2,99 +2,125 @@ name: naoru-ci-doctor-multitool-test
 
 on:
   workflow_dispatch: {}
-  pull_request:
-    branches: [main]
+  # pull_request:
+  #   branches: [main]
 
 jobs:
-  # 1. Terraform (existing job, kept as baseline)
   terraform-check:
     runs-on: ubuntu-latest
-    env:
-      TERRAFORM_DIR: ${{ inputs.terraform_dir || 'terraform' }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
-      - name: Terraform fmt
-        run: terraform fmt -check -recursive "$TERRAFORM_DIR"
-      - name: Terraform init
-        run: terraform -chdir="$TERRAFORM_DIR" init -backend=false
-      - name: Terraform validate
-        run: terraform -chdir="$TERRAFORM_DIR" validate
 
-  # 2. Docker build (intentional failure)
+      - name: Create broken terraform config
+        run: |
+          mkdir -p terraform
+          cat > terraform/main.tf <<'EOF'
+          terraform {
+            required_version = ">= 1.0"
+          }
+
+          resource "null_resource" "test" {
+            invalid_attr = "boom"
+          }
+          EOF
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive terraform
+
+      - name: Terraform init
+        run: terraform -chdir=terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform -chdir=terraform validate
+
   docker-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Broken Dockerfile build
         run: |
-          echo "FROM alpine:latest" > Dockerfile
-          echo "RUN nonexistent-command-xyz" >> Dockerfile
+          cat > Dockerfile <<'EOF'
+          FROM alpine:latest
+          RUN nonexistent-command-xyz
+          EOF
           docker build -t test-fail .
 
-  # 3. Helm lint/template (intentional failure)
   helm-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: azure/setup-helm@v4
+
       - name: Broken helm chart lint
         run: |
           helm create broken-chart
-          echo "invalid: [unclosed" >> broken-chart/values.yaml
+          cat > broken-chart/values.yaml <<'EOF'
+          invalid: [unclosed
+          EOF
           helm lint broken-chart
 
-  # 4. Bash script (intentional failure)
   bash-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Failing bash script
         run: |
           set -euo pipefail
           echo "Testing bash failure"
-          exit 1
+          grep "needle" file-that-does-not-exist.txt
 
-  # 5. YAML pipeline validation (intentional failure)
   yaml-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Broken YAML
         run: |
-          echo "key: value:" > bad.yml
-          echo "  - unindented" >> bad.yml
+          python3 -m pip install --quiet pyyaml
+          cat > bad.yml <<'EOF'
+          key: value:
+            - unindented
+          EOF
           python3 -c "import yaml; yaml.safe_load(open('bad.yml'))"
 
-  # 6. JSON config validation (intentional failure)
   json-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Broken JSON
         run: |
-          echo '{"key": "value",}' > bad.json
+          cat > bad.json <<'EOF'
+          {"key": "value",}
+          EOF
           python3 -m json.tool < bad.json
 
-  # 7. Generic code build (intentional failure)
   code-build-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Failing build
+
+      - name: Failing code build
         run: |
-          echo "console.log('hello'" > index.js
+          cat > index.js <<'EOF'
+          console.log('hello'
+          EOF
           node -c index.js
 
-  # ---- Naoru diagnosis fan-out, one per failed job ----
-  naoru-actions:
-    needs: [terraform-check, docker-check, helm-check, bash-check, yaml-check, json-check, code-build-check]
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+  naoru-action-terraform:
+    needs: [terraform-check]
+    if: ${{ always() && needs.terraform-check.result == 'failure' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -107,20 +133,11 @@ jobs:
           provider: openrouter
           model: deepseek/deepseek-v4-flash
           max-log-lines: 300
-          failed-job-name: >-
-            ${{
-              needs.terraform-check.result == 'failure' && 'terraform-check' ||
-              needs.docker-check.result == 'failure' && 'docker-check' ||
-              needs.helm-check.result == 'failure' && 'helm-check' ||
-              needs.bash-check.result == 'failure' && 'bash-check' ||
-              needs.yaml-check.result == 'failure' && 'yaml-check' ||
-              needs.json-check.result == 'failure' && 'json-check' ||
-              'code-build-check'
-            }}
+          failed-job-name: terraform-check
 
-  naoru-reusable-workflow:
-    needs: [terraform-check, docker-check, helm-check, bash-check, yaml-check, json-check, code-build-check]
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+  ci-doctor-terraform:
+    needs: [terraform-check]
+    if: ${{ always() && needs.terraform-check.result == 'failure' }}
     permissions:
       contents: read
       pull-requests: write
@@ -131,5 +148,210 @@ jobs:
       model: deepseek/deepseek-v4-flash
       max-log-lines: 300
       failed-job-name: terraform-check
+      sticky: false
     secrets:
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+  naoru-action-docker:
+    needs: [docker-check]
+    if: ${{ always() && needs.docker-check.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: clouddrove/naoru@v0
+        with:
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          provider: openrouter
+          model: deepseek/deepseek-v4-flash
+          max-log-lines: 300
+          failed-job-name: docker-check
+
+  ci-doctor-docker:
+    needs: [docker-check]
+    if: ${{ always() && needs.docker-check.result == 'failure' }}
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    uses: ./.github/workflows/ci-doctor-reusable.yaml
+    with:
+      provider: openrouter
+      model: deepseek/deepseek-v4-flash
+      max-log-lines: 300
+      failed-job-name: docker-check
+      sticky: false
+    secrets:
+      API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+  naoru-action-helm:
+    needs: [helm-check]
+    if: ${{ always() && needs.helm-check.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: clouddrove/naoru@v0
+        with:
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          provider: openrouter
+          model: deepseek/deepseek-v4-flash
+          max-log-lines: 300
+          failed-job-name: helm-check
+
+  ci-doctor-helm:
+    needs: [helm-check]
+    if: ${{ always() && needs.helm-check.result == 'failure' }}
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    uses: ./.github/workflows/ci-doctor-reusable.yaml
+    with:
+      provider: openrouter
+      model: deepseek/deepseek-v4-flash
+      max-log-lines: 300
+      failed-job-name: helm-check
+      sticky: false
+    secrets:
+      API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+  naoru-action-bash:
+    needs: [bash-check]
+    if: ${{ always() && needs.bash-check.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: clouddrove/naoru@v0
+        with:
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          provider: openrouter
+          model: deepseek/deepseek-v4-flash
+          max-log-lines: 300
+          failed-job-name: bash-check
+
+  ci-doctor-bash:
+    needs: [bash-check]
+    if: ${{ always() && needs.bash-check.result == 'failure' }}
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    uses: ./.github/workflows/ci-doctor-reusable.yaml
+    with:
+      provider: openrouter
+      model: deepseek/deepseek-v4-flash
+      max-log-lines: 300
+      failed-job-name: bash-check
+      sticky: false
+    secrets:
+      API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+  naoru-action-yaml:
+    needs: [yaml-check]
+    if: ${{ always() && needs.yaml-check.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: clouddrove/naoru@v0
+        with:
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          provider: openrouter
+          model: deepseek/deepseek-v4-flash
+          max-log-lines: 300
+          failed-job-name: yaml-check
+
+  ci-doctor-yaml:
+    needs: [yaml-check]
+    if: ${{ always() && needs.yaml-check.result == 'failure' }}
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    uses: ./.github/workflows/ci-doctor-reusable.yaml
+    with:
+      provider: openrouter
+      model: deepseek/deepseek-v4-flash
+      max-log-lines: 300
+      failed-job-name: yaml-check
+      sticky: false
+    secrets:
+      API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+  naoru-action-json:
+    needs: [json-check]
+    if: ${{ always() && needs.json-check.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: clouddrove/naoru@v0
+        with:
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          provider: openrouter
+          model: deepseek/deepseek-v4-flash
+          max-log-lines: 300
+          failed-job-name: json-check
+
+  ci-doctor-json:
+    needs: [json-check]
+    if: ${{ always() && needs.json-check.result == 'failure' }}
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    uses: ./.github/workflows/ci-doctor-reusable.yaml
+    with:
+      provider: openrouter
+      model: deepseek/deepseek-v4-flash
+      max-log-lines: 300
+      failed-job-name: json-check
+      sticky: false
+    secrets:
+      API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+  naoru-action-code-build:
+    needs: [code-build-check]
+    if: ${{ always() && needs.code-build-check.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: clouddrove/naoru@v0
+        with:
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          provider: openrouter
+          model: deepseek/deepseek-v4-flash
+          max-log-lines: 300
+          failed-job-name: code-build-check
+
+  ci-doctor-code-build:
+    needs: [code-build-check]
+    if: ${{ always() && needs.code-build-check.result == 'failure' }}
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    uses: ./.github/workflows/ci-doctor-reusable.yaml
+    with:
+      provider: openrouter
+      model: deepseek/deepseek-v4-flash
+      max-log-lines: 300
+      failed-job-name: code-build-check
+      sticky: false
+    secrets:
+      API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
